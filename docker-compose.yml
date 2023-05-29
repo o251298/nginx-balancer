@@ -1,0 +1,77 @@
+version: "3"
+services:
+  load-balancer:
+    env_file:
+      - .env
+    image: nginx
+    container_name: load-balancer
+    volumes:
+      - .docker/load-balancer/load-balancer.conf:/etc/nginx/nginx.conf
+      - .docker/load-balancer/log:/var/log/nginx
+    ports:
+      - ${LOAD_BALANCER_PORT}:80
+    restart: unless-stopped
+    depends_on:
+      - nginx-first-server
+      - nginx-second-server
+    networks:
+      - lb-net
+  nginx-first-server:
+    env_file:
+      - .env
+    image: nginx
+    container_name: nginx-first-server
+    volumes:
+      - .docker/nginx-first-server/default.conf:/etc/nginx/conf.d/default.conf
+      - .docker/nginx-first-server/log:/var/log/nginx
+      - .:/var/www/html
+    ports:
+      - ${NGINX1_PORT}:80
+    restart: unless-stopped
+    depends_on:
+      - php-first-server
+    networks:
+      - lb-net
+  php-first-server:
+    build: .docker/php-first-server
+    container_name: php-first-server
+    restart: unless-stopped
+    volumes:
+      - .docker/php-first-server/php.ini:/usr/local/etc/php/conf.d/php.ini
+      - .docker/php-first-server/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+      - .:/var/www/html
+    ports:
+      - ${PHP1_PORT}:9000
+    networks:
+      - lb-net
+  nginx-second-server:
+    env_file:
+      - .env
+    image: nginx
+    container_name: nginx-second-server
+    volumes:
+      - .docker/nginx-second-server/default.conf:/etc/nginx/conf.d/default.conf
+      - .docker/nginx-second-server/log:/var/log/nginx
+      - .:/var/www/html
+    ports:
+      - ${NGINX2_PORT}:80
+    restart: unless-stopped
+    depends_on:
+      - php-second-server
+    networks:
+      - lb-net
+  php-second-server:
+    build: .docker/php-first-server
+    container_name: php-second-server
+    restart: unless-stopped
+    volumes:
+      - .docker/php-second-server/php.ini:/usr/local/etc/php/conf.d/php.ini
+      - .docker/php-second-server/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+      - .:/var/www/html
+    ports:
+      - ${PHP2_PORT}:9000
+    networks:
+      - lb-net
+networks:
+  lb-net:
+    driver: bridge
